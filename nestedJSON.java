@@ -1,87 +1,64 @@
-import java.util.*;
+import java.util.Map;
+import java.util.List;
 
 public class Main {
 
-    // Fungsi untuk mengecek apakah object adalah tipe primitif JSON
-    public static boolean isPrimitiveJson(Object obj) {
-        return obj == null ||
-               obj instanceof String ||
-               obj instanceof Number ||
-               obj instanceof Boolean;
-    }
-
-    // Fungsi utama validasi JSON nested
-    public static boolean isValidJson(Object input) {
-
-        // Jika primitif → valid
-        if (isPrimitiveJson(input)) {
-            return true;
-        }
-
-        // Jika Map → cek key harus String, value harus valid (rekursif)
-        if (input instanceof Map<?, ?> map) {
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-
-                // Key harus String
-                if (!(entry.getKey() instanceof String)) {
-                    return false;
-                }
-
-                // Value harus valid JSON → rekursif
-                if (!isValidJson(entry.getValue())) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Jika List → cek semua elemen valid JSON
-        if (input instanceof List<?> list) {
-            for (Object element : list) {
-                if (!isValidJson(element)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Jika Array → cek semua elemen
-        if (input.getClass().isArray()) {
-            int len = java.lang.reflect.Array.getLength(input);
-            for (int i = 0; i < len; i++) {
-                Object element = java.lang.reflect.Array.get(input, i);
-                if (!isValidJson(element)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Selain itu → tidak valid JSON
-        return false;
-    }
-
     public static void main(String[] args) {
 
-        // Contoh JSON valid: Map → List → Map → primitive
-        Map<String, Object> valid = new HashMap<>();
-        valid.put("nama", "Eveline");
-        valid.put("umur", 22);
-        valid.put("alamat", Map.of("kota", "Jakarta", "kode", 12345));
-        valid.put("hobi", List.of("coding", "music"));
+        Map<String, Object> data = Map.of(
+            "user", Map.of(
+                "name", "Eveline",
+                "age", "31"
+            )
+        );
 
-        System.out.println("Valid JSON ? " + isValidJson(valid)); // true
+        String output = toMapOfFormat(data);
+        System.out.println(output);
+    }
 
-        // Contoh JSON tidak valid: key bukan String → false
-        Map<Object, Object> invalidKey = new HashMap<>();
-        invalidKey.put(123, "angka sebagai key"); // salah
+    // ============================
+    // Convert object → Map.of(...)
+    // ============================
+    public static String toMapOfFormat(Object input) {
 
-        System.out.println("Valid JSON ? " + isValidJson(invalidKey)); // false
+        if (input == null) return "null";
 
-        // Contoh JSON tidak valid: tipe aneh
-        Map<String, Object> invalidType = new HashMap<>();
-        invalidType.put("obj", new Thread()); // tidak boleh
+        // Primitive types
+        if (input instanceof String) return '"' + input.toString() + '"';
+        if (input instanceof Number || input instanceof Boolean) return input.toString();
 
-        System.out.println("Valid JSON ? " + isValidJson(invalidType)); // false
+        // List
+        if (input instanceof List<?>) {
+            List<?> list = (List<?>) input;
+            StringBuilder sb = new StringBuilder("List.of(");
+            for (int i = 0; i < list.size(); i++) {
+                sb.append(toMapOfFormat(list.get(i)));
+                if (i < list.size() - 1) sb.append(", ");
+            }
+            sb.append(")");
+            return sb.toString();
+        }
+
+        // Map
+        if (input instanceof Map<?, ?>) {
+            Map<?, ?> map = (Map<?, ?>) input;
+
+            StringBuilder sb = new StringBuilder("Map.of(");
+            int count = 0;
+
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                sb.append('"').append(e.getKey().toString()).append('"').append(", ");
+                sb.append(toMapOfFormat(e.getValue()));
+
+                if (++count < map.size()) sb.append(", ");
+            }
+
+            sb.append(")");
+
+            return sb.toString();
+        }
+
+        // Semua tipe lain → dianggap string
+        return '"' + input.toString() + '"';
     }
 }
